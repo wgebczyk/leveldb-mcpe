@@ -124,7 +124,7 @@ Status Footer::DecodeFrom(Slice* input) {
 			//find the required compressor
 			Compressor* compressor = nullptr;
 			for (auto& c : dbOptions.compressors) {
-				if (!c || c->uniqueCompressionID == compressionID) {
+				if (c && c->uniqueCompressionID == compressionID) {
 					compressor = c;
 					break;
 				}
