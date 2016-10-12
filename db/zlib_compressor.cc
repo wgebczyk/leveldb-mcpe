@@ -7,7 +7,7 @@
 
 namespace leveldb {
 
-	void ZlibCompressor::compressImpl(const char* input, size_t length, ::std::string& buffer) const
+	void ZlibCompressor::compressImpl2(const char* input, size_t length, ::std::string& buffer, const std::string& dictionary) const
 	{
 		const size_t BUFSIZE = 128 * 1024;
 		unsigned char temp_buffer[BUFSIZE];
@@ -24,6 +24,7 @@ namespace leveldb {
 		strm.avail_out = BUFSIZE;
 
 		deflateInit(&strm, compressionLevel);
+		deflateSetDictionary(&strm, (const unsigned char*)dictionary.data(), dictionary.size());
 
 		int deflate_res = Z_OK;
 		while (strm.avail_in != 0)
@@ -54,7 +55,7 @@ namespace leveldb {
 		deflateEnd(&strm);
 	}
 
-	int _zlibInflate(const char* input, size_t length, ::std::string &output) {
+	int _zlibInflate(const char* input, size_t length, ::std::string &output, const std::string& dictionary) {
 		const int CHUNK = 64 * 1024;
 
 		int ret;
@@ -69,6 +70,7 @@ namespace leveldb {
 		strm.avail_in = (uint32_t)length;
 		strm.next_in = (Bytef*)input;
 		ret = inflateInit(&strm);
+
 		if (ret != Z_OK)
 			return ret;
 
@@ -83,7 +85,12 @@ namespace leveldb {
 				ret = inflate(&strm, Z_NO_FLUSH);
 
 				if (ret == Z_NEED_DICT) {
-					ret = Z_DATA_ERROR;
+					int otherRet = inflateSetDictionary(&strm, (const unsigned char*)dictionary.data(), dictionary.size());
+					if (otherRet != Z_OK) {
+						ret = Z_DATA_ERROR;
+					} else {
+						continue;
+					}
 				}
 				if (ret < 0) {
 					(void)inflateEnd(&strm);
@@ -104,10 +111,18 @@ namespace leveldb {
 		return ret == Z_STREAM_END ? Z_OK : Z_DATA_ERROR;
 	}
 
-	bool ZlibCompressor::decompress(const char* input, size_t length, ::std::string &output) const {
-		return _zlibInflate(input, length, output) == Z_OK;
+	bool ZlibCompressor::decompress2(const char* input, size_t length, ::std::string &output, const std::string& dictionary) const {
+		return _zlibInflate(input, length, output, dictionary) == Z_OK;
 	}
 		
+	void ZlibCompressor::compressImpl(const char* input, size_t length, ::std::string& output) const {
+		compressImpl2(input, length, output, "");
+	}
+
+	bool ZlibCompressor::decompress(const char* input, size_t length, ::std::string &output) const {
+		return decompress2(input, length, output, "");
+	}
+
 }
 
 #endif

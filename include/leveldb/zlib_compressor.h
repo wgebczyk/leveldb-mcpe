@@ -27,6 +27,10 @@ namespace leveldb {
 
 		virtual bool decompress(const char* input, size_t length, ::std::string &output) const override;
 
+		void compressImpl2(const char* input, size_t length, ::std::string& output, const std::string& dictionary) const;
+
+		bool decompress2(const char* input, size_t length, ::std::string &output, const std::string& dictionary) const;
+
 	private:
 
 	};
