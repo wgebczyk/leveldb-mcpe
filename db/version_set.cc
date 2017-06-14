@@ -856,7 +856,8 @@ Status VersionSet::LogAndApply(VersionEdit* edit, port::Mutex* mu) {
     if (s.ok()) {
       std::string record;
       edit->EncodeTo(&record);
-      s = descriptor_log_->AddRecord(record);
+	  Log(options_->info_log, "MANIFEST Append %u\n", record.size());
+	  s = descriptor_log_->AddRecord(record);
       if (s.ok()) {
         s = descriptor_file_->Sync();
       }
@@ -1116,6 +1117,7 @@ Status VersionSet::WriteSnapshot(log::Writer* log) {
 
   std::string record;
   edit.EncodeTo(&record);
+  Log(options_->info_log, "Append lognum %I64u sz %u\n", log_number_, (unsigned int)record.size());
   return log->AddRecord(record);
 }
 

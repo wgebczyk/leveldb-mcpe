@@ -275,7 +275,7 @@ namespace leveldb {
 				: _fname(fname) 
 			{
 				FILE_STANDARD_INFO fi;
-				Status s = OpenFile(fname, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, OPEN_ALWAYS, _file);
+				Status s = OpenFile(fname, GENERIC_READ | GENERIC_WRITE, 0, OPEN_ALWAYS, _file);
 				if (!s.ok())
 					throw IOException(s.ToString().c_str());
 				if (_file != INVALID_HANDLE_VALUE && GetFileInformationByHandleEx(_file, FILE_INFO_BY_HANDLE_CLASS::FileStandardInfo, &fi, sizeof(fi)))
@@ -538,12 +538,23 @@ namespace leveldb {
 					bgsignal_.wait(lock);
 				}
 
+				// this is not a serial function and multiple bg jobs can be running at the same time
+				static int count = 0;
+				++count;
+				char buffer[MAX_PATH];
+				sprintf(buffer, "BGCompaction Start %d\n", count);
+				OutputDebugStringA(buffer);
+
 				void(*function)(void*) = queue_.front().function;
 				void* arg = queue_.front().arg;
 				queue_.pop_front();
 
 				lock.unlock();
 				(*function)(arg);
+
+				--count;
+				sprintf(buffer, "BGCompaction Finish %d\n", count);
+				OutputDebugStringA(buffer);
 			}
 		}
 

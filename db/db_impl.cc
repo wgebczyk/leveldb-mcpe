@@ -658,7 +658,8 @@ void DBImpl::MaybeScheduleCompaction() {
              !versions_->NeedsCompaction()) {
     // No work to be done
   } else {
-    bg_compaction_scheduled_ = true;
+	  Log(options_.info_log, "scheduling compaction\n");
+	  bg_compaction_scheduled_ = true;
     env_->Schedule(&DBImpl::BGWork, this);
   }
 }
@@ -1440,7 +1441,7 @@ bool DBImpl::GetProperty(const Slice& property, std::string* value) {
             level,
             files,
             versions_->NumLevelBytes(level) / 1048576.0,
-            stats_[level].micros / 1e6,
+            stats_[level].micros / 1000000.0,
             stats_[level].bytes_read / 1048576.0,
             stats_[level].bytes_written / 1048576.0);
         value->append(buf);

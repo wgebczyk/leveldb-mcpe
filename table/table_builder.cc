@@ -177,6 +177,7 @@ void TableBuilder::WriteRawBlock(const Slice& block_contents,
   Rep* r = rep_;
   handle->set_offset(r->offset);
   handle->set_size(block_contents.size());
+  Log(rep_->options.info_log, "Append %u\n", block_contents.size());
   r->status = r->file->Append(block_contents);
   if (r->status.ok()) {
     char trailer[kBlockTrailerSize];
@@ -244,7 +245,8 @@ Status TableBuilder::Finish() {
     footer.set_index_handle(index_block_handle);
     std::string footer_encoding;
     footer.EncodeTo(&footer_encoding);
-    r->status = r->file->Append(footer_encoding);
+	Log(rep_->options.info_log, "Append %u\n", footer_encoding.size());
+	r->status = r->file->Append(footer_encoding);
     if (r->status.ok()) {
       r->offset += footer_encoding.size();
     }
