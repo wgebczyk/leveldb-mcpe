@@ -152,7 +152,11 @@ class DLLX DB {
   virtual bool NeedsCompaction() = 0;
 
   //initialize the DB, to mitigate resource issues with the background threads.
-  virtual void MainThreadInit() = 0;
+  virtual void Init() = 0;
+
+  //accessor for compaction progress, for delayed compaction operations which need special handling
+virtual float GetCompactionProgress() const = 0;
+
 
  private:
   // No copying allowed

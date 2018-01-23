@@ -646,7 +646,7 @@ void DBImpl::RecordBackgroundError(const Status& s) {
 
 void DBImpl::MaybeScheduleCompaction() {
   mutex_.AssertHeld();
-  if (bg_compaction_scheduled_ || !first_time_compaction_run_) {
+  if (bg_compaction_scheduled_) {
     // Already scheduled
   } else if (shutting_down_.Acquire_Load()) {
     // DB is being deleted; no more background compactions
@@ -685,11 +685,15 @@ void DBImpl::BGWork(void* db) {
   reinterpret_cast<DBImpl*>(db)->BackgroundCall();
 }
 
-void DBImpl::MainThreadInit() {
-	MutexLock l(&mutex_);
-	BackgroundCompaction();
-	first_time_compaction_run_ = true;
-	bg_compaction_scheduled_ = false;
+void DBImpl::Init() {
+	compaction_progress = 0.0f; //background compaction should be considered to have already started
+}
+
+//returns a threadsafe % (0-1 range) complete, for compaction.  A negative value indicates that no compaction is in process
+//Note this value should only be used for informational purposes, and not a db state query, as compaction may begin in
+//the background at any time.
+float DBImpl::GetCompactionProgress() const {
+	return compaction_progress.load();
 }
 
 void DBImpl::BackgroundCall() {
@@ -700,7 +704,10 @@ void DBImpl::BackgroundCall() {
   } else if (!bg_error_.ok()) {
     // No more background work after a background error.
   } else {
+	compaction_progress = 0.0f;
     BackgroundCompaction();
+	compaction_progress = -1.0f;
+	first_time_compaction_run_ = true;
   }
 
   bg_compaction_scheduled_ = false;
@@ -726,7 +733,16 @@ void DBImpl::BackgroundCompaction() {
   bool is_manual = (manual_compaction_ != NULL);
   Status status;
 
+  const size_t starting_uncompacted_L0_files = versions_->NumLevelFiles(0);
+
   while (NeedsCompaction()) {
+	  if (starting_uncompacted_L0_files == 0) {
+		  compaction_progress = 1.0f;
+	  }
+	  else {
+		  compaction_progress = ((float)(starting_uncompacted_L0_files - versions_->NumLevelFiles(0)) / (float)starting_uncompacted_L0_files);
+	  }
+
 	  if (is_manual) {
 		  ManualCompaction* m = manual_compaction_;
 		  c = versions_->CompactRange(m->level, m->begin, m->end);
@@ -782,6 +798,9 @@ void DBImpl::BackgroundCompaction() {
 
 	  c = NULL;
   }
+
+  //mark compaction as "complete"
+  compaction_progress = -1.0f;
 
   if (status.ok()) {
     // Done

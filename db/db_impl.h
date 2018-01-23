@@ -14,6 +14,7 @@
 #include "leveldb/env.h"
 #include "port/port.h"
 #include "port/thread_annotations.h"
+#include <atomic>
 
 namespace leveldb {
 
@@ -47,7 +48,8 @@ class DBImpl : public DB {
   // Clears the suspend flag, so that the database can schedule background work
   virtual void ResumeCompaction();
 
-  virtual void MainThreadInit();
+  virtual void Init();
+  virtual float GetCompactionProgress() const;
 
   // Extra methods (for testing) that are not in the public DB interface
 
@@ -165,8 +167,9 @@ class DBImpl : public DB {
   std::set<uint64_t> pending_outputs_;
 
   // Has a background compaction been scheduled or is running?
-  bool bg_compaction_scheduled_;
+  bool bg_compaction_scheduled_ = false;
   bool first_time_compaction_run_ = false;
+  std::atomic<float> compaction_progress = -1.0f;
 
   // Has anyone issued a request to suspend background work?
   port::AtomicPointer suspending_compaction_;
