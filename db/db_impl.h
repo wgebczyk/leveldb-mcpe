@@ -47,6 +47,7 @@ class DBImpl : public DB {
   // Clears the suspend flag, so that the database can schedule background work
   virtual void ResumeCompaction();
 
+  virtual void MainThreadInit();
 
   // Extra methods (for testing) that are not in the public DB interface
 
@@ -69,6 +70,8 @@ class DBImpl : public DB {
   // Samples are taken approximately once every config::kReadBytesPeriod
   // bytes.
   void RecordReadSample(Slice key);
+
+  virtual bool NeedsCompaction();
 
  private:
   friend class DB;
@@ -163,6 +166,7 @@ class DBImpl : public DB {
 
   // Has a background compaction been scheduled or is running?
   bool bg_compaction_scheduled_;
+  bool first_time_compaction_run_ = false;
 
   // Has anyone issued a request to suspend background work?
   port::AtomicPointer suspending_compaction_;

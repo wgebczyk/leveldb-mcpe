@@ -93,7 +93,8 @@ class Version {
       int level,
       const InternalKey* begin,         // NULL means before all keys
       const InternalKey* end,           // NULL means after all keys
-      std::vector<FileMetaData*>* inputs);
+      std::vector<FileMetaData*>* inputs,
+	  size_t maxInputs = (size_t)256000);
 
   // Returns true iff some file in the specified level overlaps
   // some part of [*smallest_user_key,*largest_user_key].

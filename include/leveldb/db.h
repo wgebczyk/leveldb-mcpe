@@ -148,6 +148,12 @@ class DLLX DB {
   // Allow the underlying storage to react to an application resume event
   virtual void ResumeCompaction() = 0;
 
+  // notifies the user if the DB is in need of compaction, which can  use a lot of memory
+  virtual bool NeedsCompaction() = 0;
+
+  //initialize the DB, to mitigate resource issues with the background threads.
+  virtual void MainThreadInit() = 0;
+
  private:
   // No copying allowed
   DB(const DB&);

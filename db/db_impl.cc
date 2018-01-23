@@ -646,7 +646,7 @@ void DBImpl::RecordBackgroundError(const Status& s) {
 
 void DBImpl::MaybeScheduleCompaction() {
   mutex_.AssertHeld();
-  if (bg_compaction_scheduled_) {
+  if (bg_compaction_scheduled_ || !first_time_compaction_run_) {
     // Already scheduled
   } else if (shutting_down_.Acquire_Load()) {
     // DB is being deleted; no more background compactions
@@ -656,7 +656,7 @@ void DBImpl::MaybeScheduleCompaction() {
     // Already got an error; no more changes
   } else if (imm_ == NULL &&
              manual_compaction_ == NULL &&
-             !versions_->NeedsCompaction()) {
+             !NeedsCompaction()) {
     // No work to be done
   } else {
     bg_compaction_scheduled_ = true;
@@ -683,6 +683,13 @@ void DBImpl::ResumeCompaction() {
 
 void DBImpl::BGWork(void* db) {
   reinterpret_cast<DBImpl*>(db)->BackgroundCall();
+}
+
+void DBImpl::MainThreadInit() {
+	MutexLock l(&mutex_);
+	BackgroundCompaction();
+	first_time_compaction_run_ = true;
+	bg_compaction_scheduled_ = false;
 }
 
 void DBImpl::BackgroundCall() {
@@ -715,57 +722,66 @@ void DBImpl::BackgroundCompaction() {
   }
 
   Compaction* c;
-  bool is_manual = (manual_compaction_ != NULL);
   InternalKey manual_end;
-  if (is_manual) {
-    ManualCompaction* m = manual_compaction_;
-    c = versions_->CompactRange(m->level, m->begin, m->end);
-    m->done = (c == NULL);
-    if (c != NULL) {
-      manual_end = c->input(0, c->num_input_files(0) - 1)->largest;
-    }
-    Log(options_.info_log,
-        "Manual compaction at level-%d from %s .. %s; will stop at %s\n",
-        m->level,
-        (m->begin ? m->begin->DebugString().c_str() : "(begin)"),
-        (m->end ? m->end->DebugString().c_str() : "(end)"),
-        (m->done ? "(end)" : manual_end.DebugString().c_str()));
-  } else {
-    c = versions_->PickCompaction();
-  }
-
+  bool is_manual = (manual_compaction_ != NULL);
   Status status;
-  if (c == NULL) {
-    // Nothing to do
-  } else if (!is_manual && c->IsTrivialMove()) {
-    // Move file to next level
-    assert(c->num_input_files(0) == 1);
-    FileMetaData* f = c->input(0, 0);
-    c->edit()->DeleteFile(c->level(), f->number);
-    c->edit()->AddFile(c->level() + 1, f->number, f->file_size,
-                       f->smallest, f->largest);
-    status = versions_->LogAndApply(c->edit(), &mutex_);
-    if (!status.ok()) {
-      RecordBackgroundError(status);
-    }
-    VersionSet::LevelSummaryStorage tmp;
-    Log(options_.info_log, "Moved #%lld to level-%d %lld bytes %s: %s\n",
-        static_cast<unsigned long long>(f->number),
-        c->level() + 1,
-        static_cast<unsigned long long>(f->file_size),
-        status.ToString().c_str(),
-        versions_->LevelSummary(&tmp));
-  } else {
-    CompactionState* compact = new CompactionState(c);
-    status = DoCompactionWork(compact);
-    if (!status.ok()) {
-      RecordBackgroundError(status);
-    }
-    CleanupCompaction(compact);
-    c->ReleaseInputs();
-    DeleteObsoleteFiles();
+
+  while (NeedsCompaction()) {
+	  if (is_manual) {
+		  ManualCompaction* m = manual_compaction_;
+		  c = versions_->CompactRange(m->level, m->begin, m->end);
+		  m->done = (c == NULL);
+		  if (c != NULL) {
+			  manual_end = c->input(0, c->num_input_files(0) - 1)->largest;
+		  }
+		  Log(options_.info_log,
+			  "Manual compaction at level-%d from %s .. %s; will stop at %s\n",
+			  m->level,
+			  (m->begin ? m->begin->DebugString().c_str() : "(begin)"),
+			  (m->end ? m->end->DebugString().c_str() : "(end)"),
+			  (m->done ? "(end)" : manual_end.DebugString().c_str()));
+	  }
+	  else {
+		  c = versions_->PickCompaction();
+	  }
+
+	  if (c == NULL) {
+		  // Nothing to do
+		  break;
+	  }
+	  else if (!is_manual && c->IsTrivialMove()) {
+		  // Move file to next level
+		  assert(c->num_input_files(0) == 1);
+		  FileMetaData* f = c->input(0, 0);
+		  c->edit()->DeleteFile(c->level(), f->number);
+		  c->edit()->AddFile(c->level() + 1, f->number, f->file_size,
+			  f->smallest, f->largest);
+		  status = versions_->LogAndApply(c->edit(), &mutex_);
+		  if (!status.ok()) {
+			  RecordBackgroundError(status);
+		  }
+		  VersionSet::LevelSummaryStorage tmp;
+		  Log(options_.info_log, "Moved #%lld to level-%d %lld bytes %s: %s\n",
+			  static_cast<unsigned long long>(f->number),
+			  c->level() + 1,
+			  static_cast<unsigned long long>(f->file_size),
+			  status.ToString().c_str(),
+			  versions_->LevelSummary(&tmp));
+	  }
+	  else {
+		  CompactionState* compact = new CompactionState(c);
+		  status = DoCompactionWork(compact);
+		  if (!status.ok()) {
+			  RecordBackgroundError(status);
+		  }
+		  CleanupCompaction(compact);
+		  c->ReleaseInputs();
+		  DeleteObsoleteFiles();
+	  }
+	  delete c;
+
+	  c = NULL;
   }
-  delete c;
 
   if (status.ok()) {
     // Done
@@ -912,6 +928,7 @@ Status DBImpl::InstallCompactionResults(CompactionState* compact) {
 Status DBImpl::DoCompactionWork(CompactionState* compact) {
   const uint64_t start_micros = env_->NowMicros();
   int64_t imm_micros = 0;  // Micros spent doing imm_ compactions
+  Status status;
 
   Log(options_.info_log,  "Compacting %d@%d + %d@%d files",
       compact->compaction->num_input_files(0),
@@ -933,7 +950,6 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
 
   Iterator* input = versions_->MakeInputIterator(compact->compaction);
   input->SeekToFirst();
-  Status status;
   ParsedInternalKey ikey;
   std::string current_user_key;
   bool has_current_user_key = false;
@@ -1545,6 +1561,10 @@ void DBImpl::GetApproximateSizes(
     MutexLock l(&mutex_);
     v->Unref();
   }
+}
+
+bool DBImpl::NeedsCompaction() {
+	return versions_->NeedsCompaction();
 }
 
 // Default implementations of convenience methods that subclasses of DB

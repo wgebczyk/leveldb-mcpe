@@ -532,7 +532,8 @@ void Version::GetOverlappingInputs(
     int level,
     const InternalKey* begin,
     const InternalKey* end,
-    std::vector<FileMetaData*>* inputs) {
+    std::vector<FileMetaData*>* inputs,
+	size_t maxInputs) {
   assert(level >= 0);
   assert(level < config::kNumLevels);
   inputs->clear();
@@ -544,7 +545,7 @@ void Version::GetOverlappingInputs(
     user_end = end->user_key();
   }
   const Comparator* user_cmp = vset_->icmp_.user_comparator();
-  for (size_t i = 0; i < files_[level].size(); ) {
+  for (size_t i = 0; i < files_[level].size() && (inputs->size() < maxInputs); ) {
     FileMetaData* f = files_[level][i++];
     const Slice file_start = f->smallest.user_key();
     const Slice file_limit = f->largest.user_key();
@@ -1322,10 +1323,16 @@ Compaction* VersionSet::PickCompaction() {
         break;
       }
     }
-    if (c->inputs_[0].empty()) {
-      // Wrap-around to the beginning of the key space
-      c->inputs_[0].push_back(current_->files_[level][0]);
-    }
+#if 0 //Compact files chronologically
+	for (size_t i = 0; i < std::min(current_->files_[level].size(), (size_t)35); ++i) {
+		c->inputs_[0].push_back(current_->files_[level][i]);
+	}
+#else
+	if (c->inputs_[0].empty()) {
+		// Wrap-around to the beginning of the key space
+		c->inputs_[0].push_back(current_->files_[level][0]);
+	}
+#endif
   } else if (seek_compaction) {
     level = current_->file_to_compact_level_;
     c = new Compaction(options_, level);
@@ -1337,6 +1344,7 @@ Compaction* VersionSet::PickCompaction() {
   c->input_version_ = current_;
   c->input_version_->Ref();
 
+#if 1
   // Files in level 0 may overlap each other, so pick up all overlapping ones
   if (level == 0) {
     InternalKey smallest, largest;
@@ -1344,9 +1352,10 @@ Compaction* VersionSet::PickCompaction() {
     // Note that the next call will discard the file we placed in
     // c->inputs_[0] earlier and replace it with an overlapping set
     // which will include the picked file.
-    current_->GetOverlappingInputs(0, &smallest, &largest, &c->inputs_[0]);
+    current_->GetOverlappingInputs(0, &smallest, &largest, &c->inputs_[0], 36);
     assert(!c->inputs_[0].empty());
   }
+#endif
 
   SetupOtherInputs(c);
 
