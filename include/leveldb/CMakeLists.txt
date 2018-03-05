@@ -1,0 +1,23 @@
+
+process_folder_files([ALL]
+    env.h
+    zstd_compressor.h
+    status.h
+    zopfli_compressor.h
+    zlib_compressor.h
+    db.h
+    snappy_compressor.h
+    slice.h
+    cache.h
+    write_batch.h
+    options.h
+    dumpfile.h
+    c.h
+    filter_policy.h
+    comparator.h
+    table.h
+    table_builder.h
+    decompress_allocator.h
+    compressor.h
+    iterator.h
+)

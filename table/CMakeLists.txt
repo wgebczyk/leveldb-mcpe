@@ -1,0 +1,21 @@
+
+process_folder_files([ALL]
+    table.cc
+    block.cc
+    merger.cc
+    iterator.cc
+    block_builder.cc
+    iterator_wrapper.h
+    merger.h
+    table_builder.cc
+    filter_block_test.cc
+    block_builder.h
+    filter_block.cc
+    block.h
+    format.cc
+    filter_block.h
+    two_level_iterator.h
+    format.h
+    table_test.cc
+    two_level_iterator.cc
+)

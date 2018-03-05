@@ -1,0 +1,45 @@
+
+process_folder_files([ALL]
+    testutil.cc
+    env_win.cc
+    status.cc
+    arena.cc
+    bloom.cc
+    win_logger.cc
+    posix_logger.h
+    testharness.h
+    hash.cc
+    crc32c_test.cc
+    bloom_test.cc
+    hash_test.cc
+    env_boost.cc
+    coding.h
+    logging.h
+    filter_policy.cc
+    arena_test.cc
+    histogram.cc
+    crc32c.cc
+    mutexlock.h
+    coding_test.cc
+    win_logger.h
+    cache.cc
+    testharness.cc
+    histogram.h
+    crc32c.h
+    Filepath.h
+    env_test.cc
+    logging.cc
+    options.cc
+    cache_test.cc
+    arena.h
+    env_winrt.cc
+    comparator.cc
+    env_posix_test_helper.h
+    coding.cc
+    env_posix_test.cc
+    hash.h
+    random.h
+    env_posix.cc
+    testutil.h
+    env.cc
+)

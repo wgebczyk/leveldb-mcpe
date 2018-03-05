@@ -358,11 +358,13 @@ class Benchmark {
     // See if snappy is working by attempting to compress a compressible string
     const char text[] = "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy";
     std::string compressed;
+#ifdef SNAPPY
     if (!port::Snappy_Compress(text, sizeof(text), &compressed)) {
       fprintf(stdout, "WARNING: Snappy compression is not enabled\n");
     } else if (compressed.size() >= sizeof(text)) {
       fprintf(stdout, "WARNING: Snappy compression is not effective\n");
     }
+#endif
   }
 
   void PrintEnvironment() {
