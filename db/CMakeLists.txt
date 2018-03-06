@@ -31,9 +31,12 @@ process_folder_files([ALL]
     repair.cc
     filename.h
     snapshot.h
-    leveldbutil.cc
     zstd_compressor.cc
     memtable.cc
+)
+
+process_folder_files([UNUSED]
+	leveldbutil.cc
 )
 
 process_folder_files([ALL][TST]

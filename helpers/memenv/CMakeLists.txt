@@ -4,6 +4,6 @@ process_folder_files([ALL]
     memenv.h
 )
 
-process_folder_files([ALL]
+process_folder_files([ALL][TST]
     memenv_test.cc
 )
