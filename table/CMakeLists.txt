@@ -8,7 +8,6 @@ process_folder_files([ALL]
     iterator_wrapper.h
     merger.h
     table_builder.cc
-    filter_block_test.cc
     block_builder.h
     filter_block.cc
     block.h
@@ -16,6 +15,10 @@ process_folder_files([ALL]
     filter_block.h
     two_level_iterator.h
     format.h
-    table_test.cc
     two_level_iterator.cc
+)
+
+process_folder_files([ALL][TST]
+    filter_block_test.cc
+    table_test.cc
 )

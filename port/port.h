@@ -15,6 +15,7 @@
 #elif defined(LEVELDB_PLATFORM_CHROMIUM)
 #  include "port/port_chromium.h"
 #elif defined(WIN32)
+   typedef signed long ssize_t;
 #  include "port/port_win.h"
 #endif
 

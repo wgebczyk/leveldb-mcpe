@@ -1,4 +1,3 @@
-
 process_folder_files([UNUSED]
     LICENSE
     AUTHORS
@@ -12,10 +11,22 @@ process_folder_files([UNUSED]
 
 process_folder_defines([ALL]
     DLLX=
-    LEVELDB_PLATFORM_POSIX
-    POSIX
-	OS_MACOSX
 )
+
+if(APPLE)
+    process_folder_defines([ALL]
+        LEVELDB_PLATFORM_POSIX
+        POSIX
+        OS_MACOSX
+    )
+endif()
+
+if(WIN32)
+    process_folder_defines_internal([ALL]
+        WIN32
+        OS_WIN
+    )
+endif()
 
 process_sub_folders(
     util
@@ -29,4 +40,8 @@ process_sub_folders(
 
 process_folder_includes([ALL]
     .
+)
+
+process_libraries([ALL]
+    zlib
 )

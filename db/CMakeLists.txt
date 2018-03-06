@@ -6,46 +6,55 @@ process_folder_files([ALL]
     table_cache.h
     db_impl.cc
     filename.cc
-    fault_injection_test.cc
     skiplist.h
     dbformat.h
     table_cache.cc
     log_reader.cc
     write_batch.cc
-    c.cc
-    recovery_test.cc
     builder.cc
     log_writer.h
     version_edit.cc
     db_impl.h
-    skiplist_test.cc
     db_iter.h
-    corruption_test.cc
     dbformat.cc
     zopfli_compressor.cc
-    filename_test.cc
     memtable.h
     version_edit.h
     version_set.h
-    log_test.cc
-    version_set_test.cc
-    db_test.cc
     builder.h
     version_set.cc
     dumpfile.cc
     log_reader.h
     snappy_compressor.cc
-    autocompact_test.cc
     write_batch_internal.h
     db_iter.cc
     repair.cc
-    write_batch_test.cc
     filename.h
     snapshot.h
     leveldbutil.cc
     zstd_compressor.cc
-    version_edit_test.cc
     memtable.cc
-    c_test.c
+)
+
+process_folder_files([ALL][TST]
+    fault_injection_test.cc
+    recovery_test.cc
+    skiplist_test.cc
+    corruption_test.cc
+    filename_test.cc
+    version_set_test.cc
+    autocompact_test.cc
+    write_batch_test.cc
+    version_edit_test.cc
     dbformat_test.cc
+    log_test.cc
+    db_test.cc
+)
+
+process_folder_files([MAC]
+    c.cc
+)
+
+process_folder_files([MAC][TST]
+    c_test.c
 )
