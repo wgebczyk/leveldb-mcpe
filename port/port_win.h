@@ -38,6 +38,12 @@
 #include <mutex>
 #include <stdint.h>
 
+#ifdef _WIN64
+#define ssize_t __int64
+#else
+#define ssize_t int
+#endif
+
 namespace leveldb {
 	namespace port {
 
