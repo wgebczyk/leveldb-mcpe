@@ -49,11 +49,15 @@ file(GLOB_RECURSE SOURCES
 )
 
 if(WIN32)
-list(APPEND SOURCES 
-    ${CMAKE_CURRENT_SOURCE_DIR}/port/port_win.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/util/win_logger.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/util/env_win.cc
-)
+	list(APPEND SOURCES
+		${CMAKE_CURRENT_SOURCE_DIR}/port/port_win.cc
+		${CMAKE_CURRENT_SOURCE_DIR}/util/win_logger.cc
+		${CMAKE_CURRENT_SOURCE_DIR}/util/env_win.cc
+	)
+elseif(APPLE)
+	list(APPEND SOURCES
+		${CMAKE_CURRENT_SOURCE_DIR}/util/env_posix.cc
+	)
 endif()
 
 file(GLOB_RECURSE HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/*.h")
@@ -65,6 +69,8 @@ target_compile_definitions(leveldb PUBLIC DLLX=)
 
 if(WIN32)
     target_compile_definitions(leveldb PUBLIC WIN32 OS_WIN)
+elseif(APPLE)
+	target_compile_definitions(leveldb PUBLIC LEVELDB_PLATFORM_POSIX POSIX OS_MACOSX)
 endif()
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SOURCES} ${HEADERS})
