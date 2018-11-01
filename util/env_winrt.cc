@@ -340,7 +340,12 @@ namespace leveldb {
 		public:
 			WinRTEnv();
 			virtual ~WinRTEnv() {
-				fprintf(stderr, "Destroying Env::Default()\n");
+				if (bgthread_) {
+					// wait until the background thread exits
+					backgroundThreadRunning = false;
+					bgsignal_.notify_one();
+					bgthread_->join();
+				}
 			}
 
 			virtual Status NewSequentialFile(const std::string& fname, SequentialFile** result)
@@ -521,6 +526,7 @@ namespace leveldb {
 			}
 
 			std::mutex mu_;
+			bool backgroundThreadRunning = true;
 			std::condition_variable bgsignal_;
 			std::unique_ptr<std::thread> bgthread_;
 
@@ -559,6 +565,10 @@ namespace leveldb {
 
 				while(queue_.empty()) {
 					bgsignal_.wait(lock);
+
+					if (!backgroundThreadRunning) {
+						return;
+					}
 				}
 
 				void(*function)(void*) = queue_.front().function;
@@ -619,5 +629,10 @@ namespace leveldb {
 		return default_env;
 	}
 #endif
+	
+	Env* Env::New() {
+		// TODO xbos
+		return new WinRTEnv();
+	}
 }
 #endif

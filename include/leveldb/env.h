@@ -33,6 +33,13 @@ class DLLX Env {
   Env() { }
   virtual ~Env();
 
+  // Create a new environment suitable for the current operating system.
+  // Sophisticated users may wish to provide their own Env
+  // implementation instead of relying on this default environment.
+  //
+  // The result of New() belongs to the caller and must be deleted.
+  static Env* New();
+
   // Return a default environment suitable for the current operating
   // system.  Sophisticated users may wish to provide their own Env
   // implementation instead of relying on this default environment.
