@@ -39,7 +39,7 @@ Slice FilterBlockBuilder::Finish() {
   }
 
   // Append array of per-filter offsets
-  const uint32_t array_offset = (uint32_t)result_.size();
+  const uint32_t array_offset = result_.size();
   for (size_t i = 0; i < filter_offsets_.size(); i++) {
     PutFixed32(&result_, filter_offsets_[i]);
   }
@@ -53,7 +53,7 @@ void FilterBlockBuilder::GenerateFilter() {
   const size_t num_keys = start_.size();
   if (num_keys == 0) {
     // Fast path if there are no keys for this filter
-    filter_offsets_.push_back((uint32_t)result_.size());
+    filter_offsets_.push_back(result_.size());
     return;
   }
 
@@ -67,7 +67,7 @@ void FilterBlockBuilder::GenerateFilter() {
   }
 
   // Generate filter for current set of keys and append to result_.
-  filter_offsets_.push_back((uint32_t)result_.size());
+  filter_offsets_.push_back(result_.size());
   policy_->CreateFilter(&tmp_keys_[0], static_cast<int>(num_keys), &result_);
 
   tmp_keys_.clear();
@@ -78,8 +78,8 @@ void FilterBlockBuilder::GenerateFilter() {
 FilterBlockReader::FilterBlockReader(const FilterPolicy* policy,
                                      const Slice& contents)
     : policy_(policy),
-      data_(NULL),
-      offset_(NULL),
+      data_(nullptr),
+      offset_(nullptr),
       num_(0),
       base_lg_(0) {
   size_t n = contents.size();
@@ -92,10 +92,6 @@ FilterBlockReader::FilterBlockReader(const FilterPolicy* policy,
   num_ = (n - 5 - last_word) / 4;
 }
 
-#ifdef _MSC_VER
-#pragma warning ( push )
-#pragma warning ( disable : 4018 )
-#endif
 bool FilterBlockReader::KeyMayMatch(uint64_t block_offset, const Slice& key) {
   uint64_t index = block_offset >> base_lg_;
   if (index < num_) {
@@ -111,8 +107,5 @@ bool FilterBlockReader::KeyMayMatch(uint64_t block_offset, const Slice& key) {
   }
   return true;  // Errors are treated as potential matches
 }
-#ifdef _MSC_VER
-#pragma warning ( pop )
-#endif
 
 }

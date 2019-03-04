@@ -43,7 +43,7 @@ int MemTable::KeyComparator::operator()(const char* aptr, const char* bptr)
 // into this scratch space.
 static const char* EncodeKey(std::string* scratch, const Slice& target) {
   scratch->clear();
-  PutVarint32(scratch, (uint32_t)target.size());
+  PutVarint32(scratch, target.size());
   scratch->append(target.data(), target.size());
   return scratch->data();
 }
@@ -79,10 +79,6 @@ Iterator* MemTable::NewIterator() {
   return new MemTableIterator(&table_);
 }
 
-#ifdef _MSC_VER
-#pragma warning ( push )
-#pragma warning ( disable : 4389 )
-#endif
 void MemTable::Add(SequenceNumber s, ValueType type,
                    const Slice& key,
                    const Slice& value) {
@@ -98,19 +94,16 @@ void MemTable::Add(SequenceNumber s, ValueType type,
       VarintLength(internal_key_size) + internal_key_size +
       VarintLength(val_size) + val_size;
   char* buf = arena_.Allocate(encoded_len);
-  char* p = EncodeVarint32(buf, (uint32_t)internal_key_size);
+  char* p = EncodeVarint32(buf, internal_key_size);
   memcpy(p, key.data(), key_size);
   p += key_size;
   EncodeFixed64(p, (s << 8) | type);
   p += 8;
-  p = EncodeVarint32(p, (uint32_t)val_size);
+  p = EncodeVarint32(p, val_size);
   memcpy(p, value.data(), val_size);
-  assert((p + val_size) - buf == encoded_len);
+  assert(p + val_size == buf + encoded_len);
   table_.Insert(buf);
 }
-#ifdef _MSC_VER
-#pragma warning ( pop )
-#endif
 
 bool MemTable::Get(const LookupKey& key, std::string* value, Status* s) {
   Slice memkey = key.memtable_key();
@@ -136,10 +129,8 @@ bool MemTable::Get(const LookupKey& key, std::string* value, Status* s) {
       const uint64_t tag = DecodeFixed64(key_ptr + key_length - 8);
       switch (static_cast<ValueType>(tag & 0xff)) {
         case kTypeValue: {
-		  if (value) {
-			Slice v = GetLengthPrefixedSlice(key_ptr + key_length);
-			value->assign(v.data(), v.size());
-		  }
+          Slice v = GetLengthPrefixedSlice(key_ptr + key_length);
+          value->assign(v.data(), v.size());
           return true;
         }
         case kTypeDeletion:

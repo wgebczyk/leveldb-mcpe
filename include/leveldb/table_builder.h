@@ -14,21 +14,25 @@
 #define STORAGE_LEVELDB_INCLUDE_TABLE_BUILDER_H_
 
 #include <stdint.h>
+#include "leveldb/export.h"
 #include "leveldb/options.h"
 #include "leveldb/status.h"
 
 namespace leveldb {
 
-class DLLX BlockBuilder;
-class DLLX BlockHandle;
-class DLLX WritableFile;
+class BlockBuilder;
+class BlockHandle;
+class WritableFile;
 
-class DLLX TableBuilder {
+class LEVELDB_EXPORT TableBuilder {
  public:
   // Create a builder that will store the contents of the table it is
   // building in *file.  Does not close the file.  It is up to the
   // caller to close the file after calling Finish().
   TableBuilder(const Options& options, WritableFile* file);
+
+  TableBuilder(const TableBuilder&) = delete;
+  void operator=(const TableBuilder&) = delete;
 
   // REQUIRES: Either Finish() or Abandon() has been called.
   ~TableBuilder();
@@ -77,14 +81,10 @@ class DLLX TableBuilder {
  private:
   bool ok() const { return status().ok(); }
   void WriteBlock(BlockBuilder* block, BlockHandle* handle);
-  void WriteRawBlock(const Slice& data, Compressor* compressor, BlockHandle* handle);
+  void WriteRawBlock(const Slice& data, CompressionType, BlockHandle* handle);
 
-  struct DLLX Rep;
+  struct Rep;
   Rep* rep_;
-
-  // No copying allowed
-  TableBuilder(const TableBuilder&);
-  void operator=(const TableBuilder&);
 };
 
 }  // namespace leveldb

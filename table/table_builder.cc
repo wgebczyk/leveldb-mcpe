@@ -14,7 +14,6 @@
 #include "table/format.h"
 #include "util/coding.h"
 #include "util/crc32c.h"
-#include "leveldb/compressor.h"
 
 namespace leveldb {
 
@@ -54,7 +53,7 @@ struct TableBuilder::Rep {
         index_block(&index_block_options),
         num_entries(0),
         closed(false),
-        filter_block(opt.filter_policy == NULL ? NULL
+        filter_block(opt.filter_policy == nullptr ? nullptr
                      : new FilterBlockBuilder(opt.filter_policy)),
         pending_index_entry(false) {
     index_block_options.block_restart_interval = 1;
@@ -63,7 +62,7 @@ struct TableBuilder::Rep {
 
 TableBuilder::TableBuilder(const Options& options, WritableFile* file)
     : rep_(new Rep(options, file)) {
-  if (rep_->filter_block != NULL) {
+  if (rep_->filter_block != nullptr) {
     rep_->filter_block->StartBlock(0);
   }
 }
@@ -107,7 +106,7 @@ void TableBuilder::Add(const Slice& key, const Slice& value) {
     r->pending_index_entry = false;
   }
 
-  if (r->filter_block != NULL) {
+  if (r->filter_block != nullptr) {
     r->filter_block->AddKey(key);
   }
 
@@ -132,7 +131,7 @@ void TableBuilder::Flush() {
     r->pending_index_entry = true;
     r->status = r->file->Flush();
   }
-  if (r->filter_block != NULL) {
+  if (r->filter_block != nullptr) {
     r->filter_block->StartBlock(r->offset);
   }
 }
@@ -147,32 +146,34 @@ void TableBuilder::WriteBlock(BlockBuilder* block, BlockHandle* handle) {
   Slice raw = block->Finish();
 
   Slice block_contents;
-  auto compressor = r->options.compressors[0];
-
+  CompressionType type = r->options.compression;
   // TODO(postrelease): Support more compression options: zlib?
-  if (compressor) {
- 		std::string& compressed = r->compressed_output;
-		compressor->compress(raw.data(), raw.size(), compressed);
+  switch (type) {
+    case kNoCompression:
+      block_contents = raw;
+      break;
 
-      if ( compressed.size() < raw.size() - (raw.size() / 8u)) {
-        block_contents = compressed;
+    case kSnappyCompression: {
+      std::string* compressed = &r->compressed_output;
+      if (port::Snappy_Compress(raw.data(), raw.size(), compressed) &&
+          compressed->size() < raw.size() - (raw.size() / 8u)) {
+        block_contents = *compressed;
       } else {
         // Snappy not supported, or compressed less than 12.5%, so just
         // store uncompressed form
         block_contents = raw;
-		compressor = nullptr;
+        type = kNoCompression;
       }
+      break;
+    }
   }
-  else 
-	  block_contents = raw;
-
-  WriteRawBlock(block_contents, compressor, handle);
+  WriteRawBlock(block_contents, type, handle);
   r->compressed_output.clear();
   block->Reset();
 }
 
 void TableBuilder::WriteRawBlock(const Slice& block_contents,
-                                 Compressor* compressor,
+                                 CompressionType type,
                                  BlockHandle* handle) {
   Rep* r = rep_;
   handle->set_offset(r->offset);
@@ -180,7 +181,7 @@ void TableBuilder::WriteRawBlock(const Slice& block_contents,
   r->status = r->file->Append(block_contents);
   if (r->status.ok()) {
     char trailer[kBlockTrailerSize];
-	trailer[0] = compressor ? compressor->uniqueCompressionID : 0;
+    trailer[0] = type;
     uint32_t crc = crc32c::Value(block_contents.data(), block_contents.size());
     crc = crc32c::Extend(crc, trailer, 1);  // Extend crc to cover block type
     EncodeFixed32(trailer+1, crc32c::Mask(crc));
@@ -204,15 +205,15 @@ Status TableBuilder::Finish() {
   BlockHandle filter_block_handle, metaindex_block_handle, index_block_handle;
 
   // Write filter block
-  if (ok() && r->filter_block != NULL) {
-    WriteRawBlock(r->filter_block->Finish(), nullptr,
+  if (ok() && r->filter_block != nullptr) {
+    WriteRawBlock(r->filter_block->Finish(), kNoCompression,
                   &filter_block_handle);
   }
 
   // Write metaindex block
   if (ok()) {
     BlockBuilder meta_index_block(&r->options);
-    if (r->filter_block != NULL) {
+    if (r->filter_block != nullptr) {
       // Add mapping from "filter.Name" to location of filter data
       std::string key = "filter.";
       key.append(r->options.filter_policy->Name());

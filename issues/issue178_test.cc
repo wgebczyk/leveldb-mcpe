@@ -38,6 +38,7 @@ TEST(Issue178, Test) {
   leveldb::DB* db;
   leveldb::Options db_options;
   db_options.create_if_missing = true;
+  db_options.compression = leveldb::kNoCompression;
   ASSERT_OK(leveldb::DB::Open(db_options, dbpath, &db));
 
   // create first key range

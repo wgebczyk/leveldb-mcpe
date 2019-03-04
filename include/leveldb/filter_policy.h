@@ -17,12 +17,13 @@
 #define STORAGE_LEVELDB_INCLUDE_FILTER_POLICY_H_
 
 #include <string>
+#include "leveldb/export.h"
 
 namespace leveldb {
 
-class DLLX Slice;
+class Slice;
 
-class DLLX FilterPolicy {
+class LEVELDB_EXPORT FilterPolicy {
  public:
   virtual ~FilterPolicy();
 
@@ -63,8 +64,8 @@ class DLLX FilterPolicy {
 // ignores trailing spaces, it would be incorrect to use a
 // FilterPolicy (like NewBloomFilterPolicy) that does not ignore
 // trailing spaces in keys.
-extern DLLX const FilterPolicy* NewBloomFilterPolicy(int bits_per_key);
+LEVELDB_EXPORT const FilterPolicy* NewBloomFilterPolicy(int bits_per_key);
 
-}
+}  // namespace leveldb
 
 #endif  // STORAGE_LEVELDB_INCLUDE_FILTER_POLICY_H_

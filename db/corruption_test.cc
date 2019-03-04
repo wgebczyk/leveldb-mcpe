@@ -20,6 +20,10 @@
 #include "util/testharness.h"
 #include "util/testutil.h"
 
+#if defined(LEVELDB_PLATFORM_WINDOWS)
+#include "util/env_windows_test_helper.h"
+#endif  // defined(LEVELDB_PLATFORM_WINDOWS)
+
 namespace leveldb {
 
 static const int kValueSize = 1000;
@@ -32,6 +36,17 @@ class CorruptionTest {
   Options options_;
   DB* db_;
 
+#if defined(LEVELDB_PLATFORM_WINDOWS)
+  static void SetFileLimits(int mmap_limit) {
+    EnvWindowsTestHelper::SetReadOnlyMMapLimit(mmap_limit);
+  }
+
+  // TODO(cmumford): Modify corruption_test to use MemEnv and remove.
+  static void RelaxFilePermissions() {
+    EnvWindowsTestHelper::RelaxFilePermissions();
+  }
+#endif  // defined(LEVELDB_PLATFORM_WINDOWS)
+
   CorruptionTest() {
     tiny_cache_ = NewLRUCache(100);
     options_.env = &env_;
@@ -39,7 +54,7 @@ class CorruptionTest {
     dbname_ = test::TmpDir() + "/corruption_test";
     DestroyDB(dbname_, options_);
 
-    db_ = NULL;
+    db_ = nullptr;
     options_.create_if_missing = true;
     Reopen();
     options_.create_if_missing = false;
@@ -53,7 +68,7 @@ class CorruptionTest {
 
   Status TryReopen() {
     delete db_;
-    db_ = NULL;
+    db_ = nullptr;
     return DB::Open(options_, dbname_, &db_);
   }
 
@@ -63,7 +78,7 @@ class CorruptionTest {
 
   void RepairDB() {
     delete db_;
-    db_ = NULL;
+    db_ = nullptr;
     ASSERT_OK(::leveldb::RepairDB(dbname_, options_));
   }
 
@@ -237,8 +252,8 @@ TEST(CorruptionTest, TableFile) {
   Build(100);
   DBImpl* dbi = reinterpret_cast<DBImpl*>(db_);
   dbi->TEST_CompactMemTable();
-  dbi->TEST_CompactRange(0, NULL, NULL);
-  dbi->TEST_CompactRange(1, NULL, NULL);
+  dbi->TEST_CompactRange(0, nullptr, nullptr);
+  dbi->TEST_CompactRange(1, nullptr, nullptr);
 
   Corrupt(kTableFile, 100, 1);
   Check(90, 99);
@@ -251,8 +266,8 @@ TEST(CorruptionTest, TableFileRepair) {
   Build(100);
   DBImpl* dbi = reinterpret_cast<DBImpl*>(db_);
   dbi->TEST_CompactMemTable();
-  dbi->TEST_CompactRange(0, NULL, NULL);
-  dbi->TEST_CompactRange(1, NULL, NULL);
+  dbi->TEST_CompactRange(0, nullptr, nullptr);
+  dbi->TEST_CompactRange(1, nullptr, nullptr);
 
   Corrupt(kTableFile, 100, 1);
   RepairDB();
@@ -302,7 +317,7 @@ TEST(CorruptionTest, CorruptedDescriptor) {
   ASSERT_OK(db_->Put(WriteOptions(), "foo", "hello"));
   DBImpl* dbi = reinterpret_cast<DBImpl*>(db_);
   dbi->TEST_CompactMemTable();
-  dbi->TEST_CompactRange(0, NULL, NULL);
+  dbi->TEST_CompactRange(0, nullptr, nullptr);
 
   Corrupt(kDescriptorFile, 0, 1000);
   Status s = TryReopen();
@@ -343,7 +358,7 @@ TEST(CorruptionTest, CompactionInputErrorParanoid) {
     Corrupt(kTableFile, 100, 1);
     env_.SleepForMicroseconds(100000);
   }
-  dbi->CompactRange(NULL, NULL);
+  dbi->CompactRange(nullptr, nullptr);
 
   // Write must fail because of corrupted table
   std::string tmp1, tmp2;
@@ -370,5 +385,16 @@ TEST(CorruptionTest, UnrelatedKeys) {
 }  // namespace leveldb
 
 int main(int argc, char** argv) {
+#if defined(LEVELDB_PLATFORM_WINDOWS)
+  // When Windows maps the contents of a file into memory, even if read/write,
+  // subsequent attempts to open that file for write access will fail. Forcing
+  // all RandomAccessFile instances to use base file I/O (e.g. ReadFile)
+  // allows these tests to open files in order to corrupt their contents.
+  leveldb::CorruptionTest::SetFileLimits(0);
+
+  // Allow this test to write to (and corrupt) files which are normally
+  // open for exclusive read access.
+  leveldb::CorruptionTest::RelaxFilePermissions();
+#endif  // defined(LEVELDB_PLATFORM_WINDOWS)
   return leveldb::test::RunAllTests();
 }

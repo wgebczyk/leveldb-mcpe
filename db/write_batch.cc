@@ -30,10 +30,7 @@ WriteBatch::WriteBatch() {
   Clear();
 }
 
-WriteBatch::~WriteBatch() 
-{
-
-}
+WriteBatch::~WriteBatch() { }
 
 WriteBatch::Handler::~Handler() { }
 
@@ -42,7 +39,7 @@ void WriteBatch::Clear() {
   rep_.resize(kHeader);
 }
 
-size_t WriteBatch::ApproximateSize() {
+size_t WriteBatch::ApproximateSize() const {
   return rep_.size();
 }
 
@@ -91,7 +88,7 @@ int WriteBatchInternal::Count(const WriteBatch* b) {
 }
 
 void WriteBatchInternal::SetCount(WriteBatch* b, int n) {
-  EncodeFixed32(&(b->rep_)[8], n);
+  EncodeFixed32(&b->rep_[8], n);
 }
 
 SequenceNumber WriteBatchInternal::Sequence(const WriteBatch* b) {
@@ -99,7 +96,7 @@ SequenceNumber WriteBatchInternal::Sequence(const WriteBatch* b) {
 }
 
 void WriteBatchInternal::SetSequence(WriteBatch* b, SequenceNumber seq) {
-	EncodeFixed64(&b->rep_[0], seq);
+  EncodeFixed64(&b->rep_[0], seq);
 }
 
 void WriteBatch::Put(const Slice& key, const Slice& value) {
@@ -113,6 +110,10 @@ void WriteBatch::Delete(const Slice& key) {
   WriteBatchInternal::SetCount(this, WriteBatchInternal::Count(this) + 1);
   rep_.push_back(static_cast<char>(kTypeDeletion));
   PutLengthPrefixedSlice(&rep_, key);
+}
+
+void WriteBatch::Append(const WriteBatch &source) {
+  WriteBatchInternal::Append(this, &source);
 }
 
 namespace {
