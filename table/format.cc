@@ -13,6 +13,8 @@
 #include "leveldb/decompress_allocator.h"
 #include <map>
 
+#include <iostream>
+
 namespace leveldb {
 
 	DecompressAllocator::~DecompressAllocator() {}
@@ -179,6 +181,12 @@ Status Footer::DecodeFrom(Slice* input) {
 			}
 
 			delete[] buf;
+
+			if (!success) {
+				std::cout << "compressor->decompress failed. Size of buffer: " << buffer.size() << ". Contents of buffer: " << std::endl;
+				std::cout << buffer << std::endl;
+				assert(false);
+			}
 			
 			if (options.decompress_allocator) {
 				options.decompress_allocator->release(std::move(buffer));

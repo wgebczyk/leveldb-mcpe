@@ -5,10 +5,13 @@
 #include <zlib.h>
 #include <algorithm>
 
+#include <iostream>
+
 namespace leveldb {
 
 	void ZlibCompressorBase::compressImpl(const char* input, size_t length, ::std::string& buffer) const
 	{
+		std::cout << "entering ZlibCompressorBase::compressImpl" << std::endl;
 		const size_t BUFSIZE = 128 * 1024;
 		unsigned char temp_buffer[BUFSIZE];
 
@@ -53,9 +56,11 @@ namespace leveldb {
 		assert(deflate_res == Z_STREAM_END);
 		buffer.append(temp_buffer, temp_buffer + BUFSIZE - strm.avail_out);
 		deflateEnd(&strm);
+		std::cout << "exiting ZlibCompressorBase::compressImpl" << std::endl;
 	}
 
 	int ZlibCompressorBase::inflate(const char* input, size_t length, ::std::string &output) const {
+		std::cout << "entering ZlibCompressorBase::inflate" << std::endl;
 		const int CHUNK = 64 * 1024;
 
 		int ret;
@@ -74,6 +79,10 @@ namespace leveldb {
 
 		if (ret != Z_OK)
 		{
+			std::cout << "exiting ZlibCompressorBase::inflate (inflateInit2 failed) with errorcode: " << ret << std::endl;
+			if (ret == Z_MEM_ERROR) {
+				std::cout << "(Error with memory allocation)" << std::endl;
+			}
 			return ret;
 		}
 
@@ -87,11 +96,16 @@ namespace leveldb {
 
 				ret = ::inflate(&strm, Z_NO_FLUSH);
 
+				if (ret == Z_NEED_DICT || ret < 0) {
+					std::cout << "detected error in inflate: errorcode:" << ret << std::endl;
+				}
+
 				if (ret == Z_NEED_DICT) {
 					ret = Z_DATA_ERROR;
 				}
 				if (ret < 0) {
 					(void)inflateEnd(&strm);
+					std::cout << "exiting ZlibCompressorBase::inflate with errorcode: " << ret << std::endl;
 					return ret;
 				}
 
@@ -106,6 +120,13 @@ namespace leveldb {
 
 		/* clean up and return */
 		(void)inflateEnd(&strm);
+		if (ret != Z_STREAM_END) {
+			printf("Found unexpected return result\n");
+		}
+
+		std::cout << "preparing to exit ZlibCompressorBase - wrote " << output.size() << " bytes into output buffer" << std::endl;
+
+		std::cout << "exiting ZlibCompressorBase::inflate" << std::endl;
 		return ret == Z_STREAM_END ? Z_OK : Z_DATA_ERROR;
 	}
 
