@@ -33,6 +33,8 @@
 #include "util/logging.h"
 #include "util/mutexlock.h"
 
+#include "../../../project/WorldLoc/ScopedTimer.h"
+
 namespace leveldb {
 
 const int kNumNonTableCacheFiles = 10;
@@ -218,7 +220,8 @@ void DBImpl::MaybeIgnoreError(Status* s) const {
 }
 
 void DBImpl::DeleteObsoleteFiles() {
-  if (!bg_error_.ok()) {
+	PROFILE_TAG("DeleteObseleteFiles");
+	if (!bg_error_.ok()) {
     // After a background error, we don't know whether a new version may
     // or may not have been committed, so we cannot safely garbage collect.
     return;
@@ -584,7 +587,8 @@ void DBImpl::CompactRange(const Slice* begin, const Slice* end) {
 }
 
 void DBImpl::TEST_CompactRange(int level, const Slice* begin,const Slice* end) {
-  assert(level >= 0);
+	PROFILE_TAG("Test_CompactRange ");
+assert(level >= 0);
   assert(level + 1 < config::kNumLevels);
 
   InternalKey begin_storage, end_storage;
@@ -621,6 +625,7 @@ void DBImpl::TEST_CompactRange(int level, const Slice* begin,const Slice* end) {
 }
 
 Status DBImpl::TEST_CompactMemTable() {
+	PROFILE_TAG("TEST_CompactMemTable ");
   // NULL batch means just wait for earlier writes to be done
   Status s = Write(WriteOptions(), NULL);
   if (s.ok()) {
@@ -707,7 +712,8 @@ void DBImpl::BackgroundCall() {
 }
 
 void DBImpl::BackgroundCompaction() {
-  mutex_.AssertHeld();
+	PROFILE_TAG("BackgroundCompaction ");
+	mutex_.AssertHeld();
 
   if (imm_ != NULL) {
     CompactMemTable();
@@ -718,6 +724,7 @@ void DBImpl::BackgroundCompaction() {
   bool is_manual = (manual_compaction_ != NULL);
   InternalKey manual_end;
   if (is_manual) {
+	  PROFILE_TAG("CompactRange ");
     ManualCompaction* m = manual_compaction_;
     c = versions_->CompactRange(m->level, m->begin, m->end);
     m->done = (c == NULL);
@@ -794,7 +801,8 @@ void DBImpl::BackgroundCompaction() {
 }
 
 void DBImpl::CleanupCompaction(CompactionState* compact) {
-  mutex_.AssertHeld();
+	PROFILE_TAG("CleanupCompaction ");
+	mutex_.AssertHeld();
   if (compact->builder != NULL) {
     // May happen if we get a shutdown call in the middle of compaction
     compact->builder->Abandon();
@@ -837,6 +845,7 @@ Status DBImpl::OpenCompactionOutputFile(CompactionState* compact) {
 
 Status DBImpl::FinishCompactionOutputFile(CompactionState* compact,
                                           Iterator* input) {
+		PROFILE_TAG("Finish output file");
   assert(compact != NULL);
   assert(compact->outfile != NULL);
   assert(compact->builder != NULL);
@@ -889,7 +898,8 @@ Status DBImpl::FinishCompactionOutputFile(CompactionState* compact,
 
 
 Status DBImpl::InstallCompactionResults(CompactionState* compact) {
-  mutex_.AssertHeld();
+  PROFILE_TAG("InstallCompactionResults");
+	mutex_.AssertHeld();
   Log(options_.info_log,  "Compacted %d@%d + %d@%d files => %lld bytes",
       compact->compaction->num_input_files(0),
       compact->compaction->level(),
@@ -910,6 +920,7 @@ Status DBImpl::InstallCompactionResults(CompactionState* compact) {
 }
 
 Status DBImpl::DoCompactionWork(CompactionState* compact) {
+	PROFILE_TAG("DoCompactionWork ");
   const uint64_t start_micros = env_->NowMicros();
   int64_t imm_micros = 0;  // Micros spent doing imm_ compactions
 
@@ -938,8 +949,9 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
   std::string current_user_key;
   bool has_current_user_key = false;
   SequenceNumber last_sequence_for_key = kMaxSequenceNumber;
-  for (; input->Valid() && !shutting_down_.Acquire_Load(); ) {
-    // Prioritize immutable compaction work
+  {
+  for (PROFILE_TAG("For all") ; input->Valid() && !shutting_down_.Acquire_Load(); ) {
+	  // Prioritize immutable compaction work
     if (has_imm_.NoBarrier_Load() != NULL) {
       const uint64_t imm_start = env_->NowMicros();
       mutex_.Lock();
@@ -1008,6 +1020,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
     if (!drop) {
       // Open output file if necessary
       if (compact->builder == NULL) {
+		  PROFILE_TAG("open output file");
         status = OpenCompactionOutputFile(compact);
         if (!status.ok()) {
           break;
@@ -1031,7 +1044,8 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
 
     input->Next();
   }
-
+  }
+  PROFILE_TAG("The rest");
   if (status.ok() && shutting_down_.Acquire_Load()) {
     status = Status::IOError("Deleting DB during compaction");
   }
