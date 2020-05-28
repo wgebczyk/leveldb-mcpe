@@ -639,6 +639,9 @@ void PosixEnv::Schedule(void (*function)(void*), void* arg) {
 }
 
 void PosixEnv::BGThread() {
+#ifdef NETEASE_SERVER_MOD
+  pthread_setname_np(pthread_self(), "EnvPosix");
+#endif
   while (true) {
     // Wait until there is an item that is ready to run
     PthreadCall("lock", pthread_mutex_lock(&mu_));
