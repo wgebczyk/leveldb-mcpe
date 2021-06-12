@@ -599,19 +599,18 @@ namespace leveldb {
 		return TRUE;
 	}
 
-	Env* Env::Default() {
 #if 0
+	Env* Env::Default() {
 		PVOID lpContext;
 		InitOnceExecuteOnce(&g_InitOnce,          // One-time initialization structure
 			InitDefaultEnv,   // Pointer to initialization callback function
 			"",                 // Optional parameter to callback function (not used)
 			&lpContext);          // Receives pointer to event object stored in g_InitOnce
-#else
 		if (default_env == NULL)
 			InitDefaultEnv(NULL, NULL, NULL);
-#endif
 
 		return default_env;
 	}
+#endif
 }
 #endif
