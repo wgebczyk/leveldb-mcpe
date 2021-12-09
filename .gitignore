@@ -5,5 +5,9 @@ build_config.mk
 *.so
 *.so.*
 *_test
+*.user
 db_bench
 leveldbutil
+/.vs
+/bin
+/obj

@@ -827,14 +827,11 @@ TEST(TableTest, ApproximateOffsetOfPlain) {
 
 }
 
-static bool SnappyCompressionSupported() {
 #ifdef SNAPPY
+static bool SnappyCompressionSupported() {
   std::string out;
   Slice in = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
   return port::Snappy_Compress(in.data(), in.size(), &out);
-#else
-  return false;
-#endif
 }
 
 TEST(TableTest, ApproximateOffsetOfCompressed) {
@@ -872,6 +869,7 @@ TEST(TableTest, ApproximateOffsetOfCompressed) {
   // Have now emitted two large compressible strings, so adjust expected offset.
   ASSERT_TRUE(Between(c.ApproximateOffsetOf("xyz"), 2 * min_z, 2 * max_z));
 }
+#endif
 
 }  // namespace leveldb
 

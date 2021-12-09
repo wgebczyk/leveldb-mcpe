@@ -5,7 +5,9 @@
 #include "leveldb/c.h"
 
 #include <stdlib.h>
+#if (!LEVELDB_PLATFORM_WINDOWS)
 #include <unistd.h>
+#endif
 #include "leveldb/cache.h"
 #include "leveldb/comparator.h"
 #include "leveldb/db.h"
@@ -16,7 +18,9 @@
 #include "leveldb/status.h"
 #include "leveldb/write_batch.h"
 #include "leveldb/zlib_compressor.h"
+#if SNAPPY
 #include "leveldb/snappy_compressor.h"
+#endif
 
 using leveldb::Cache;
 using leveldb::Comparator;
